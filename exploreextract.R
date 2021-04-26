@@ -264,7 +264,10 @@ sleep_costs <- inner_join(ccs, iss) %>%
 
 scs <- sleep_costs %>%
   slice_sample(n = 100000) %>%
-  filter(total > 0)
+  filter(total > 0) %>%
+  drop_na()
+
+# dropped_na because I couldn't add NA to new obs tibble to later run posterior_epred
 
 fit_8 <- stan_glm(scs,
                   formula = log(total) ~ YEAR + HRSLEEP + self_pay*HRSLEEP,
@@ -311,6 +314,31 @@ doc_moved <- unique(y$doc_moved)
 far <- unique(y$far)
 direct_pay <- unique(y$direct_pay)            
 
-newobs <- expand_grid(total, self_pay, where, doc_moved, far, direct_pay) %>%
+newobs <- expand_grid(self_pay, where, doc_moved, far, direct_pay) %>%
   as_tibble()
+
+# produces the following: Error: Error in vec_slice(x, idx) : 
+# long vectors not supported yet: ../../../../R-4.0.3/src/include/Rinlinedfuns.h:535
+
+# attempt to tidybayes fit_8
+# formula = log(total) ~ YEAR + HRSLEEP + self_pay*HRSLEEP,
+
+YEAR <- unique(scs$YEAR)
+HRSLEEP <- unique(scs$HRSLEEP)
+self_pay <- unique(scs$self_pay)
+
+newobs <- expand_grid(YEAR, HRSLEEP, self_pay) %>%
+  as_tibble()
+
+pe <- posterior_epred(fit_8, 
+                      newdata = newobs) %>%
+  as_tibble()
+
+z <- add_fitted_draws(newobs, fit_8) 
+
+# Error is odd because I'm not running _linpred? Instead of posterior_linpred(..., transform=TRUE) please call posterior_epred(), which provides equivalent functionality.
+# Error: vector memory exhausted (limit reached?)
+
+
+
 
