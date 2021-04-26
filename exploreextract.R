@@ -4,6 +4,9 @@ library(ggthemes)
 library(gt)
 library(janitor)
 library(rstanarm)
+library(broom.mixed)
+library(gtsummary)
+library(tidybayes)
 
 # read in the ipums data 
 
@@ -21,7 +24,7 @@ costs <- costaccess_data %>%
          total = CHGTOT) 
 
 # find the median for each year
-# Choosing median over mean because I'm wary of outliers throwing off our range
+# Choosing median over mean because I'm wary of outliers throwing off range
 
 median_costs <- costs %>%
   group_by(YEAR) %>%
@@ -38,7 +41,7 @@ median_costs <- costs %>%
          total) 
 
 # Plot the medians. We need to stack a few to get them to appear on one plot.
-# clarify definitions and paste them here in a comment
+# source definitions and paste them here in a comment for explanatory clarity
 
 median_plot <- median_costs %>%
   ggplot(aes(x = YEAR,
@@ -63,15 +66,12 @@ median_plot <- median_costs %>%
        caption = "Source: IPUMS") +
   theme_classic()
   
-  
-# question: 
-# do people who cause more medical expenditures pay more or less out of pocket year over year?
 
 # if I log my full data I'll need to remove the zeros first, like we did here: 
 
 costsmall <- costs %>% 
   filter(total > 0) %>%
-  slice_sample(n = 10000)
+  slice_sample(n = 25000)
 
 fit_1 <- stan_glm(costsmall,
          formula = log(total) ~ self_pay + YEAR + self_pay*YEAR,
@@ -79,10 +79,14 @@ fit_1 <- stan_glm(costsmall,
          refresh = 0,
          seed = 288)
 
+# question: 
+# do people who cause more medical expenditures pay more or less 
+# out of pocket year over year?
+
 # ~~~~~~~~~~~~~~~
 
-# isolate the access tibble, and rename the variables
 # all of these are reasons for "no usual source of care"
+# isolate the access tibble, and rename the variables
 # codes: 0 = n/a, 1 = no, 2 = yes
 # we need to re-code to standard binary so our models are more interpretable. 
 # But first, rename so it's more intuitive
@@ -144,14 +148,10 @@ access_clean <- costs_clean %>%
                                  TRUE ~ NA_character_))
 
 # a few of the questions I'm exploring: 
-# experiment with some models to explore the interaction between access and cost
-# combining self_pay and access, what variables would we expect to have an 
-# interesting relationship?
-# in comparison with fit_2: 
 # how would all of these access variables impact total costs and out of pocket costs? 
 
 # note on model significance: 
-# if SDx2 is < Median the model is significant
+# if SDx2 is < Median the model is significant (?)
 
 # next steps
 # run with larger sets of data
@@ -161,9 +161,12 @@ access_clean <- costs_clean %>%
 
 # select 2 fits, save the output as RDS. Load 
 
-x <- access_clean %>%
-  filter(total > 0) %>%
-  slice_sample(n = 50000)
+# x <- access_clean %>%
+#   filter(total > 0) %>%
+#   slice_sample(n = 100000)
+
+y <- access_clean%>%
+  filter(total > 0) 
 
 fit_2 <- stan_glm(x,
                   formula = log(total) ~ language + self_pay,
@@ -182,11 +185,13 @@ fit_3 <- stan_glm(x,
                  family = gaussian,
                  seed = 254)
 
-fit_4 <- stan_glm(x,
+fit_4 <- stan_glm(y,
                   formula = log(total) ~ self_pay + where + doc_moved + far + direct_pay*doc_moved,
                   refresh = 0,
                   family = gaussian,
                   seed = 254)
+
+# fit_4 is the preferred model according to my loo_compare
 
 fit_5 <- stan_glm(x,
                   formula = self_pay ~ total + noinsurance + jobrelated + noneed_doc + other +
@@ -202,13 +207,98 @@ fit_6 <- stan_glm(x,
                   family = gaussian,
                   seed = 254)
 
-fit_7 <- stan_glm(x,
+# fit_6 is not running, producing the Warning: Warning message:
+# In center_x(x, sparse) :
+#   Dropped empty interaction levels: noinsuranceYes:jobrelatedYes 
+
+fit_7 <- stan_glm(y,
                   formula = log(total) ~ self_pay + YEAR + self_pay*noinsurance,
                   family = gaussian,
                   refresh = 0,
                   seed = 288)
 
-
 # Access posteriors: what is the probability of being impacted by various barriers to care?
 
+loo1 <- loo(fit_1, k_threshold = 0.7)
+loo2 <- loo(fit_2, k_threshold = 0.7)
+loo3 <- loo(fit_3, k_threshold = 0.7)
+loo4 <- loo(fit_4, k_threshold = 0.7)
+loo5 <- loo(fit_5, k_threshold = 0.7)
+# loo6 <- loo(fit_6, k_threshold = 0.7)
+loo7 <- loo(fit_7, k_threshold = 0.7)
 
+loo_compare(loo2, loo3, loo4, loo5, loo7)
+compare <- loo_compare(loo4, loo7)
+
+
+
+# ~~~~~~~~~~~~~~~
+
+# sleep data exploration 
+# recoding data such that all those with more than 7 hours of sleep = Optimal,
+# less than 5 hours of sleep = "Deprived", and 6 hours = suboptimal 
+# (Double check with American Sleep Society)
+
+ideal_sleep <- sleep_data %>% 
+  mutate(HRSLEEP = case_when(HRSLEEP >= 7 ~ "Optimal",
+                             HRSLEEP < 5  ~ "Deprived",
+                             HRSLEEP == 6 ~ "Suboptimal",
+                             TRUE ~ NA_character_)) %>%
+  select(YEAR, HRSLEEP)
+
+# sleep_costs <- inner_join(ideal_sleep, costs_clean)
+
+# Error: vector memory exhausted (limit reached?)
+# I need to make these tibbles smaller so I can build a model and not crash my machine
+# If something is interesting I'll scale on fas-ondemand 
+
+ccs <- costs_clean %>%
+  slice_sample(n = 30000)
+
+iss <- ideal_sleep %>%
+  slice_sample(n = 30000)
+
+sleep_costs <- inner_join(ccs, iss) %>%
+  select(YEAR, HRSLEEP, direct_pay, self_pay, total)
+
+scs <- sleep_costs %>%
+  slice_sample(n = 100000) %>%
+  filter(total > 0)
+
+fit_8 <- stan_glm(scs,
+                  formula = log(total) ~ YEAR + HRSLEEP + self_pay*HRSLEEP,
+                  family = gaussian, 
+                  refresh = 0, 
+                  seed = 325)
+
+# let's look at a couple of fits in table form 
+
+tbl_fit_4 <- tbl_regression(fit_4, 
+               intercept = TRUE, 
+               estimate_fun = function(x) style_sigfig(x, digits = 3)) %>%
+  as_gt() %>%
+  tab_header(title = md("**Geographic Barriers to Healthcare**"),
+             subtitle = "Those with barriers end up costing more?") %>%
+  tab_source_note(md("Source: IPUMS")) %>% 
+  cols_label(estimate = md("**Parameter**"))
+
+tbl_fit_8 <- tbl_regression(fit_8, 
+               intercept = TRUE, 
+               estimate_fun = function(x) style_sigfig(x, digits = 3)) %>%
+  as_gt() %>%
+  tab_header(title = md("**Sleep and Health Care Costs**"),
+             subtitle = "Those who get optimal sleep cost less?") %>%
+  tab_source_note(md("Source: IPUMS")) %>% 
+  cols_label(estimate = md("**Parameter**"))
+
+
+# I built these tables as attempts at interpretation, but they may be off.
+# maybe my classmates can help me during demo day? 
+
+# I'm not sure if either of these models are accurate enough to build posteriors, but if they are:
+
+#  formula = log(total) ~ self_pay + where + doc_moved + far + direct_pay*doc_moved,
+
+#~~~ 
+
+            
