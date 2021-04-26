@@ -165,7 +165,9 @@ access_clean <- costs_clean %>%
 #   filter(total > 0) %>%
 #   slice_sample(n = 100000)
 
-y <- access_clean%>%
+# I'm swapping in y for the models that seemed most interesting 
+
+y <- access_clean %>%
   filter(total > 0) 
 
 fit_2 <- stan_glm(x,
@@ -231,13 +233,12 @@ loo_compare(loo2, loo3, loo4, loo5, loo7)
 compare <- loo_compare(loo4, loo7)
 
 
-
 # ~~~~~~~~~~~~~~~
 
 # sleep data exploration 
 # recoding data such that all those with more than 7 hours of sleep = Optimal,
 # less than 5 hours of sleep = "Deprived", and 6 hours = suboptimal 
-# (Double check with American Sleep Society)
+# (Double check with American Sleep Society this maps to recs)
 
 ideal_sleep <- sleep_data %>% 
   mutate(HRSLEEP = case_when(HRSLEEP >= 7 ~ "Optimal",
@@ -250,7 +251,7 @@ ideal_sleep <- sleep_data %>%
 
 # Error: vector memory exhausted (limit reached?)
 # I need to make these tibbles smaller so I can build a model and not crash my machine
-# If something is interesting I'll scale on fas-ondemand 
+# If something is interesting I'll scale on FAS-ondemand 
 
 ccs <- costs_clean %>%
   slice_sample(n = 30000)
@@ -271,14 +272,14 @@ fit_8 <- stan_glm(scs,
                   refresh = 0, 
                   seed = 325)
 
-# let's look at a couple of fits in table form 
+# let's look at a couple fits in table form 
 
 tbl_fit_4 <- tbl_regression(fit_4, 
                intercept = TRUE, 
                estimate_fun = function(x) style_sigfig(x, digits = 3)) %>%
   as_gt() %>%
   tab_header(title = md("**Geographic Barriers to Healthcare**"),
-             subtitle = "Those with barriers end up costing more?") %>%
+             subtitle = "What's the relationship between cost and access?") %>%
   tab_source_note(md("Source: IPUMS")) %>% 
   cols_label(estimate = md("**Parameter**"))
 
@@ -297,8 +298,19 @@ tbl_fit_8 <- tbl_regression(fit_8,
 
 # I'm not sure if either of these models are accurate enough to build posteriors, but if they are:
 
-#  formula = log(total) ~ self_pay + where + doc_moved + far + direct_pay*doc_moved,
+# fit_4 formula = log(total) ~ self_pay + where + doc_moved + far + direct_pay*doc_moved,
 
 #~~~ 
 
-            
+# tidybayes 
+
+total <- unique(y$total)
+self_pay <- unique(y$self_pay)
+where <- unique(y$where)
+doc_moved <- unique(y$doc_moved)
+far <- unique(y$far)
+direct_pay <- unique(y$direct_pay)            
+
+newobs <- expand_grid(total, self_pay, where, doc_moved, far, direct_pay) %>%
+  as_tibble()
+
