@@ -10,7 +10,32 @@ library(tidybayes)
 library(shiny)
 library(shinythemes)
 
-# read in the ipums data 
+
+# The Medical Expenditure Panel Survey (MEPS) 
+# provides harmonized microdata from the longitudinal survey of 
+# U.S. health care expenditures and utilization
+
+# Variable explanations: 
+# NOUSLYDKWHER	Why no usual source of care: Doesn't know where to go
+# P	NOUSLYDRMOV	Why no usual source of care: Previous doctor moved or is unavailable
+# P	NOUSLYFAR	Why no usual source of care: Care too far away or inconvenient
+# P	NOUSLYLANG	Why no usual source of care: Speak a different language
+# P	NOUSLYNOLIKE	Why no usual source of care: Doesn't like doctors
+# P	NOUSLYNONEED	Why no usual source of care: Doesn't need doctor
+# P	NOUSLYOTH	Why no usual source of care: Other reason
+# P	NOUSLYJOB	Why no usual source of care: Reason related to job
+# P	NOUSLYNOINS	Why no usual source of care: No health insurance
+
+# P	EXPTOT	Annual total of direct health care payments 
+# EXPTOT captures the sum of direct payments for care provided during the year
+# including out-of-pocket payments and payments by private insurance, Medicaid, Medicare, and other sources
+
+# P	CHGTOT	Annual total of charges for health care
+# sum of fully established charges for care received during the year, 
+# excluding those for prescribed medicines
+# does not usually reflect actual payments made for services, 
+
+# read in the IPUMS / MPES data 
 
 ddi <- read_ipums_ddi("raw_data/nhis_00001.xml")
 sleep_data <- read_ipums_micro(ddi)
@@ -45,7 +70,6 @@ median_costs <- costs %>%
 #saveRDS(median_costs, "median_costs.rds")
 
 # Plot the medians. We need to stack a few to get them to appear on one plot.
-# source definitions and paste them here in a comment for explanatory clarity
 
 median_plot <- median_costs %>%
   ggplot(aes(x = YEAR,
@@ -237,7 +261,7 @@ compare <- loo_compare(loo2, loo4,loo7)
 # fit_4 is the preferred model according to my loo_compare. I'll save it and move it to clean_data
 saveRDS(fit_4, file = "fit_4.rds")
 
-# let's look at a couple fits in table form 
+# let's look at a fit in table form 
 
 tbl_fit_4 <- tbl_regression(fit_4, 
                intercept = TRUE, 
@@ -245,16 +269,6 @@ tbl_fit_4 <- tbl_regression(fit_4,
   as_gt() %>%
   tab_header(title = md("**Geographic Barriers to Healthcare**"),
              subtitle = "What's the relationship between cost and access?") %>%
-  tab_source_note(md("Source: IPUMS")) %>% 
-  cols_label(estimate = md("**Parameter**"))
-
-
-tbl_fit_8 <- tbl_regression(fit_8, 
-               intercept = TRUE, 
-               estimate_fun = function(x) style_sigfig(x, digits = 5)) %>%
-  as_gt() %>%
-  tab_header(title = md("**Sleep and Health Care Costs**"),
-             subtitle = "Those who get optimal sleep cost less?") %>%
   tab_source_note(md("Source: IPUMS")) %>% 
   cols_label(estimate = md("**Parameter**"))
 
@@ -307,7 +321,7 @@ u %>%
 fit_4_tibble <- fit_4 %>%
   as_tibble()
 
-fit_4 %>% 
+farYes <- fit_4 %>% 
   as_tibble() %>% 
   ggplot(aes(farYes)) + 
   geom_histogram(aes(y = after_stat(count/sum(count))),
@@ -319,7 +333,7 @@ fit_4 %>%
   scale_y_continuous(labels = scales::percent_format(1)) +
   theme_classic()
 
-fit_4 %>% 
+intercept <- fit_4 %>% 
   as_tibble() %>% 
   ggplot(aes(`(Intercept)`)) + 
   geom_histogram(aes(y = after_stat(count/sum(count))),
@@ -331,16 +345,22 @@ fit_4 %>%
   scale_y_continuous(labels = scales::percent_format(1)) +
   theme_classic()
 
+whereYes <- fit_4 %>% 
+  as_tibble() %>% 
+  ggplot(aes(whereYes)) + 
+  geom_histogram(aes(y = after_stat(count/sum(count))),
+                 bins = 100) +
+  labs(title = "Posterior Distribution: Barriers to Care and Cost",
+       subtitle = "Don't know where to go as barrier to care",
+       y = "Probability",
+       x = "Coefficient of whereYes",
+       caption = "Source: IPUMS") + 
+  scale_y_continuous(labels = scales::percent_format(1)) +
+  theme_classic()
 
+###################################################################
 
-
-
-
-
-
-# ~~~~~~~~~~~~~~~
-
-# sleep data cleaning 
+# sleep data cleaning. This is interesting, but I won't use for now
 
 # recoding data such that all those with:
 # more than 7 hours of sleep = Optimal,
@@ -383,6 +403,20 @@ fit_8 <- stan_glm(scs,
                   refresh = 0, 
                   seed = 325)
 
+
+# fit_8 in a table: 
+
+tbl_fit_8 <- tbl_regression(fit_8, 
+                            intercept = TRUE, 
+                            estimate_fun = function(x) style_sigfig(x, digits = 5)) %>%
+  as_gt() %>%
+  tab_header(title = md("**Sleep and Health Care Costs**"),
+             subtitle = "Those who get optimal sleep cost less?") %>%
+  tab_source_note(md("Source: IPUMS")) %>% 
+  cols_label(estimate = md("**Parameter**"))
+
+# new obs for building a posterior 
+
 YEAR <- unique(scs$YEAR)
 HRSLEEP <- unique(scs$HRSLEEP)
 self_pay <- unique(scs$self_pay)
@@ -397,9 +431,5 @@ pe <- posterior_epred(fit_8,
   as_tibble()
 
 z <- add_fitted_draws(newobs, fit_8) 
-
-
-
-
 
 
