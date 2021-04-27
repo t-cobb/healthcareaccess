@@ -42,6 +42,8 @@ median_costs <- costs %>%
          self_pay,
          total) 
 
+#saveRDS(median_costs, "median_costs.rds")
+
 # Plot the medians. We need to stack a few to get them to appear on one plot.
 # source definitions and paste them here in a comment for explanatory clarity
 
@@ -62,36 +64,17 @@ median_plot <- median_costs %>%
  annotate("text", x = 2014, y = 450, label = "Direct Payments") +
  annotate("text", x = 2011, y = 150, label = "Out of Pocket") +
   labs(title = "Annual Cost of Medical Care in the US (median)",
-       subtitle = "2016 saw an uptick in all categories",
+       subtitle = "What changed in 2016 that led to an uptick?",
        x = "",
        y = "Amount Paid in USD",
        caption = "Source: IPUMS") +
   theme_classic()
-  
 
-# if I log my full data I'll need to remove the zeros first, like we did here: 
+# a note on the data on access / barriers to healthcare. 
+# all of the variables below are reasons for "no usual source of care"
 
-costsmall <- costs %>% 
-  filter(total > 0) %>%
-  slice_sample(n = 25000)
-
-fit_1 <- stan_glm(costsmall,
-         formula = log(total) ~ self_pay + YEAR + self_pay*YEAR,
-         family = gaussian,
-         refresh = 0,
-         seed = 288)
-
-# question: 
-# do people who cause more medical expenditures pay more or less 
-# out of pocket year over year?
-
-# ~~~~~~~~~~~~~~~
-
-# all of these are reasons for "no usual source of care"
-# isolate the access tibble, and rename the variables
-# codes: 0 = n/a, 1 = no, 2 = yes
-# we need to re-code to standard binary so our models are more interpretable. 
-# But first, rename so it's more intuitive
+# To explore this data in more depth, 
+# I'll isolate the access tibble, and rename each variable
 
 costs_clean <- costs %>%
   select(YEAR, 
@@ -117,8 +100,13 @@ costs_clean <- costs %>%
          jobrelated = NOUSLYJOB, 
          noinsurance = NOUSLYNOINS)
 
-# recode all of the binary variables to NA, 0, 1
-# There are some coded as "unknown" and I've decided it's reasonable to recode these as NA 
+
+# the ipums coders use the following logic: 
+# codes: 0 = n/a, 1 = no, 2 = yes
+
+# I decided to re-code to standard binary so my models are easier to interpret
+# In the next step, I recode all of the binary variables to NA, 0, or 1
+# There are some coded as "unknown" which for our purposes can be re-coded these as NA 
 
 access_clean <- costs_clean %>%
     mutate(where = case_when(where == 1 ~ "No",
@@ -149,39 +137,52 @@ access_clean <- costs_clean %>%
                                  noinsurance == 2 ~ "Yes",
                                  TRUE ~ NA_character_))
 
-# a few of the questions I'm exploring: 
-# how would all of these access variables impact total costs and out of pocket costs? 
+# a few of the questions I'm curious about: 
+# how do barriers to care impact total costs and out of pocket healthcare expenditures? 
+# do people who cause more medical expenditures pay more or less 
+# out of pocket year over year?
 
-# note on model significance: 
-# if SDx2 is < Median the model is significant (?)
+# to build prediction models for cost variables, I'll first need to create bins. 
+# For my purposes, above vs below average may be sufficient 
 
-# next steps
-# run with larger sets of data
-# run loocompare and select the models that most significantly predict total cost and self pay
-# run these models on the full data 
-# based on the access variables, what can we learn about potential health care costs and expenditures? 
-
-# select 2 fits, save the output as RDS. Load 
-
-# x <- access_clean %>%
-#   filter(total > 0) %>%
-#   slice_sample(n = 100000)
-
-# I'm swapping in y for the models that seemed most interesting 
+x <- access_clean %>%
+  filter(total > 0) %>%
+  slice_sample(n = 100000)
 
 y <- access_clean %>%
-  filter(total > 0) 
+  filter(total > 0) %>%
+  mutate(direct_pay = case_when(direct_pay >= mean(direct_pay) ~ "above_ave",
+                           direct_pay < mean(direct_pay) ~ "below_ave"),
+         self_pay = case_when(self_pay >= mean(self_pay) ~ "above_ave",
+                              self_pay < mean(self_pay) ~ "below_ave"))
 
-fit_2 <- stan_glm(x,
+# for the first model, I'll explore only cost variables.
+# note that I filter out 0 in the total variable, as above, and create a sample of my full data set 
+
+costsmall <- costs %>% 
+  filter(total > 0) %>%
+  slice_sample(n = 25000)
+
+fit_1 <- stan_glm(costsmall,
+                  formula = log(total) ~ self_pay + YEAR + self_pay*YEAR,
+                  family = gaussian,
+                  refresh = 0,
+                  seed = 288)
+
+# this model includes language as a barrier to care, along with out of pocket expenditures and total
+
+fit_2 <- stan_glm(y,
                   formula = log(total) ~ language + self_pay,
                    refresh = 0,
                    family = gaussian,
                    seed = 254)
 
-# saveRDS(fit_2, file = "fit_2.rds")
-# this is the line to save the output of my fit. Then I move it to clean_data folder 
+# this is the line to save the output of my fit, which I can then move  to clean_data folder in my app
+
+saveRDS(fit_2, file = "fit_2.rds")
+
 # within my app, I call readRDS("(foldername)/fit_2.RDS") assign to an object
-# don't put rstanarm in the app or the app won't publish 
+# don't put rstanarm in the app or the app won't publish
 
 fit_3 <- stan_glm(x,
                  formula = log(total) ~ language + noinsurance + self_pay + self_pay*jobrelated,
@@ -194,8 +195,6 @@ fit_4 <- stan_glm(y,
                   refresh = 0,
                   family = gaussian,
                   seed = 254)
-
-# fit_4 is the preferred model according to my loo_compare
 
 fit_5 <- stan_glm(x,
                   formula = self_pay ~ total + noinsurance + jobrelated + noneed_doc + other +
@@ -221,26 +220,133 @@ fit_7 <- stan_glm(y,
                   refresh = 0,
                   seed = 288)
 
-# Access posteriors: what is the probability of being impacted by various barriers to care?
+# compare models: 
 
 loo1 <- loo(fit_1, k_threshold = 0.7)
 loo2 <- loo(fit_2, k_threshold = 0.7)
 loo3 <- loo(fit_3, k_threshold = 0.7)
 loo4 <- loo(fit_4, k_threshold = 0.7)
 loo5 <- loo(fit_5, k_threshold = 0.7)
-# loo6 <- loo(fit_6, k_threshold = 0.7)
+loo6 <- loo(fit_6, k_threshold = 0.7)
 loo7 <- loo(fit_7, k_threshold = 0.7)
 
-loo_compare(loo2, loo3, loo4, loo5, loo7)
-compare <- loo_compare(loo4, loo7)
+compare <- loo_compare(loo2, loo4,loo7)
+
+# it seems fit_4 and fit_7 are the best of the batch, and that 4 > 7
+
+# fit_4 is the preferred model according to my loo_compare. I'll save it and move it to clean_data
+saveRDS(fit_4, file = "fit_4.rds")
+
+# let's look at a couple fits in table form 
+
+tbl_fit_4 <- tbl_regression(fit_4, 
+               intercept = TRUE, 
+               estimate_fun = function(x) style_sigfig(x, digits = 5)) %>%
+  as_gt() %>%
+  tab_header(title = md("**Geographic Barriers to Healthcare**"),
+             subtitle = "What's the relationship between cost and access?") %>%
+  tab_source_note(md("Source: IPUMS")) %>% 
+  cols_label(estimate = md("**Parameter**"))
+
+
+tbl_fit_8 <- tbl_regression(fit_8, 
+               intercept = TRUE, 
+               estimate_fun = function(x) style_sigfig(x, digits = 5)) %>%
+  as_gt() %>%
+  tab_header(title = md("**Sleep and Health Care Costs**"),
+             subtitle = "Those who get optimal sleep cost less?") %>%
+  tab_source_note(md("Source: IPUMS")) %>% 
+  cols_label(estimate = md("**Parameter**"))
+
+# save this table and move into clean_data / my shiny app 
+saveRDS(tbl_fit_4, "tbl_fit_4.rds")
+
+# tidybayes prep / newobs tibble for fit_4 
+
+self_pay <- unique(y$self_pay)
+where <- c("Yes", "No")
+doc_moved <- c("Yes", "No")
+far <- c("Yes", "No")
+direct_pay <- unique(y$direct_pay) 
+YEAR <- unique(y$YEAR)
+
+newobs <- expand_grid(YEAR, self_pay, where, doc_moved, far, direct_pay) %>%
+  as_tibble()
+
+pe <- posterior_epred(fit_4, 
+                      newdata = newobs) %>%
+  as_tibble()
+
+z <- add_fitted_draws(newobs, fit_4) 
+
+u <- z %>% group_by(self_pay, where, doc_moved, far, direct_pay) %>%
+  summarize(avg = median(.value)) %>%
+  arrange(desc(avg)) 
+
+# should be no overlap between filter and ggplot()
+
+u %>% 
+  filter(self_pay == "above_ave", 
+         far == "No",
+       #  where == "Yes",
+        direct_pay == "above_ave") %>% 
+       
+  ggplot(aes(x = as.character(doc_moved), 
+             y = avg,
+             fill = where)) +
+  stat_slab(alpha = 0.5) +
+  labs(title = "Title",
+       subtitle = "Sub", 
+       x = "Year",
+       y = "$",
+       caption = "Source: IPUMS")
+
+
+# attempting to plot fit_4 
+
+fit_4_tibble <- fit_4 %>%
+  as_tibble()
+
+fit_4 %>% 
+  as_tibble() %>% 
+  ggplot(aes(farYes)) + 
+  geom_histogram(aes(y = after_stat(count/sum(count))),
+                 bins = 100) +
+  labs(title = "Posterior Distribution of Distance as a Barrier to Care",
+       y = "Probability",
+       x = "Coefficient of distance as a barrier",
+       caption = "Source: IPUMS") + 
+  scale_y_continuous(labels = scales::percent_format(1)) +
+  theme_classic()
+
+fit_4 %>% 
+  as_tibble() %>% 
+  ggplot(aes(`(Intercept)`)) + 
+  geom_histogram(aes(y = after_stat(count/sum(count))),
+                 bins = 100) +
+  labs(title = "Posterior Distribution of Intercept",
+       y = "Probability",
+       x = "Coefficient of Intercept",
+       caption = "Source: IPUMS") + 
+  scale_y_continuous(labels = scales::percent_format(1)) +
+  theme_classic()
+
+
+
+
+
+
 
 
 # ~~~~~~~~~~~~~~~
 
-# sleep data exploration 
-# recoding data such that all those with more than 7 hours of sleep = Optimal,
-# less than 5 hours of sleep = "Deprived", and 6 hours = suboptimal 
-# (Double check with American Sleep Society this maps to recs)
+# sleep data cleaning 
+
+# recoding data such that all those with:
+# more than 7 hours of sleep = Optimal,
+# less than 5 hours of sleep = "Deprived"
+# and 6 hours = suboptimal 
+# based on definitions from American Sleep Association
 
 ideal_sleep <- sleep_data %>% 
   mutate(HRSLEEP = case_when(HRSLEEP >= 7 ~ "Optimal",
@@ -252,8 +358,8 @@ ideal_sleep <- sleep_data %>%
 # sleep_costs <- inner_join(ideal_sleep, costs_clean)
 
 # Error: vector memory exhausted (limit reached?)
+
 # I need to make these tibbles smaller so I can build a model and not crash my machine
-# If something is interesting I'll scale on FAS-ondemand 
 
 ccs <- costs_clean %>%
   slice_sample(n = 30000)
@@ -277,57 +383,11 @@ fit_8 <- stan_glm(scs,
                   refresh = 0, 
                   seed = 325)
 
-# let's look at a couple fits in table form 
-
-tbl_fit_4 <- tbl_regression(fit_4, 
-               intercept = TRUE, 
-               estimate_fun = function(x) style_sigfig(x, digits = 3)) %>%
-  as_gt() %>%
-  tab_header(title = md("**Geographic Barriers to Healthcare**"),
-             subtitle = "What's the relationship between cost and access?") %>%
-  tab_source_note(md("Source: IPUMS")) %>% 
-  cols_label(estimate = md("**Parameter**"))
-
-tbl_fit_8 <- tbl_regression(fit_8, 
-               intercept = TRUE, 
-               estimate_fun = function(x) style_sigfig(x, digits = 3)) %>%
-  as_gt() %>%
-  tab_header(title = md("**Sleep and Health Care Costs**"),
-             subtitle = "Those who get optimal sleep cost less?") %>%
-  tab_source_note(md("Source: IPUMS")) %>% 
-  cols_label(estimate = md("**Parameter**"))
-
-
-# I built these tables as attempts at interpretation, but they may be off.
-# maybe my classmates can help me during demo day? 
-
-# I'm not sure if either of these models are accurate enough to build posteriors, but if they are:
-
-# fit_4 formula = log(total) ~ self_pay + where + doc_moved + far + direct_pay*doc_moved,
-
-#~~~ 
-
-# tidybayes 
-
-total <- unique(y$total)
-self_pay <- unique(y$self_pay)
-where <- unique(y$where)
-doc_moved <- unique(y$doc_moved)
-far <- unique(y$far)
-direct_pay <- unique(y$direct_pay)            
-
-newobs <- expand_grid(self_pay, where, doc_moved, far, direct_pay) %>%
-  as_tibble()
-
-# produces the following: Error: Error in vec_slice(x, idx) : 
-# long vectors not supported yet: ../../../../R-4.0.3/src/include/Rinlinedfuns.h:535
-
-# attempt to tidybayes fit_8
-# formula = log(total) ~ YEAR + HRSLEEP + self_pay*HRSLEEP,
-
 YEAR <- unique(scs$YEAR)
 HRSLEEP <- unique(scs$HRSLEEP)
 self_pay <- unique(scs$self_pay)
+
+# (unique for a cost variable won't work -- need to create buckets')
 
 newobs <- expand_grid(YEAR, HRSLEEP, self_pay) %>%
   as_tibble()
@@ -338,8 +398,6 @@ pe <- posterior_epred(fit_8,
 
 z <- add_fitted_draws(newobs, fit_8) 
 
-# Error is odd because I'm not running _linpred? Instead of posterior_linpred(..., transform=TRUE) please call posterior_epred(), which provides equivalent functionality.
-# Error: vector memory exhausted (limit reached?)
 
 
 
