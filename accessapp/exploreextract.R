@@ -10,21 +10,11 @@ library(tidybayes)
 library(shiny)
 library(shinythemes)
 
-
 # The Medical Expenditure Panel Survey (MEPS) 
 # provides harmonized microdata from the longitudinal survey of 
 # U.S. health care expenditures and utilization
 
-# Variable explanations: 
-# NOUSLYDKWHER	Why no usual source of care: Doesn't know where to go
-# P	NOUSLYDRMOV	Why no usual source of care: Previous doctor moved or is unavailable
-# P	NOUSLYFAR	Why no usual source of care: Care too far away or inconvenient
-# P	NOUSLYLANG	Why no usual source of care: Speak a different language
-# P	NOUSLYNOLIKE	Why no usual source of care: Doesn't like doctors
-# P	NOUSLYNONEED	Why no usual source of care: Doesn't need doctor
-# P	NOUSLYOTH	Why no usual source of care: Other reason
-# P	NOUSLYJOB	Why no usual source of care: Reason related to job
-# P	NOUSLYNOINS	Why no usual source of care: No health insurance
+# explanation of cost variables:
 
 # P	EXPTOT	Annual total of direct health care payments 
 # EXPTOT captures the sum of direct payments for care provided during the year
@@ -33,7 +23,7 @@ library(shinythemes)
 # P	CHGTOT	Annual total of charges for health care
 # sum of fully established charges for care received during the year, 
 # excluding those for prescribed medicines
-# does not usually reflect actual payments made for services, 
+# does not usually reflect actual payments made for services
 
 # read in the IPUMS / MPES data 
 
@@ -96,6 +86,17 @@ median_plot <- median_costs %>%
 
 # a note on the data on access / barriers to healthcare. 
 # all of the variables below are reasons for "no usual source of care"
+
+# Variable explanations: 
+# NOUSLYDKWHER	Why no usual source of care: Doesn't know where to go
+# P	NOUSLYDRMOV	Why no usual source of care: Previous doctor moved or is unavailable
+# P	NOUSLYFAR	Why no usual source of care: Care too far away or inconvenient
+# P	NOUSLYLANG	Why no usual source of care: Speak a different language
+# P	NOUSLYNOLIKE	Why no usual source of care: Doesn't like doctors
+# P	NOUSLYNONEED	Why no usual source of care: Doesn't need doctor
+# P	NOUSLYOTH	Why no usual source of care: Other reason
+# P	NOUSLYJOB	Why no usual source of care: Reason related to job
+# P	NOUSLYNOINS	Why no usual source of care: No health insurance
 
 # To explore this data in more depth, 
 # I'll isolate the access tibble, and rename each variable
@@ -163,8 +164,6 @@ access_clean <- costs_clean %>%
 
 # a few of the questions I'm curious about: 
 # how do barriers to care impact total costs and out of pocket healthcare expenditures? 
-# do people who cause more medical expenditures pay more or less 
-# out of pocket year over year?
 
 # to build prediction models for cost variables, I'll first need to create bins. 
 # For my purposes, above vs below average may be sufficient 
@@ -233,10 +232,6 @@ fit_6 <- stan_glm(x,
                   refresh = 0,
                   family = gaussian,
                   seed = 254)
-
-# fit_6 is not running, producing the Warning: Warning message:
-# In center_x(x, sparse) :
-#   Dropped empty interaction levels: noinsuranceYes:jobrelatedYes 
 
 fit_7 <- stan_glm(y,
                   formula = log(total) ~ self_pay + YEAR + self_pay*noinsurance,
@@ -316,7 +311,7 @@ u %>%
        caption = "Source: IPUMS")
 
 
-# attempting to plot fit_4 
+# plots for fit_4 
 
 fit_4_tibble <- fit_4 %>%
   as_tibble()
