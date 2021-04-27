@@ -15,25 +15,56 @@ ui <- navbarPage(
     tabsetPanel(
         tabPanel("Healthcare Expenditures in the US",
                  titlePanel("Cost of Care"),
-                 plotOutput("median_plot")),
+                 img(src = "median_plot.png", height = "75%", width = "70%",
+                     style = "display: block; margin-left: auto; margin-right: auto;")),
                  
         tabPanel("Model",
                  titlePanel(""),
-                 gt_output("table1"),
-                 h3("Posteriors of Geographic Barriers to Care"),
-                 plotOutput("fit_4_posterior_whereYes"),
-                 plotOutput("fit_4_posterior_farYes")),
+                 p(strong("Regression Model Equation:")),
+                 withMathJax('$$ (log)total_i = \\beta_0 + \\beta_1selfpay_i + 
+                        \\beta_2where_i + \\beta_3docmoved_i + \\beta_4far_i +
+                        \\beta_5directpay*docmoved_i + 
+                           \\varepsilon_i $$'),
+                 br(),
+                 br(),
+              #   gt_output("table1"),
+                  img(src = "tbl_fit_4.png", height = "60%", width = "60%",
+                  style = "display: block; margin-left: auto; margin-right: auto;"),
+                br(),
+                 br(),
+                 h4("Posteriors of Geographic Barriers to Care"),
+                 br(),
+                 br(),
+                 img(src = "fit_4_posterior_whereYes.png", height = "60%", width = "60%",
+                     style = "display: block; margin-left: auto; margin-right: auto;"),
+                 br(),
+                 br(),
+                 br(),
+                 img(src = "fit_4_posterior_farYes.png", height = "60%", width = "60%",
+                     style = "display: block; margin-left: auto; margin-right: auto;")),
+        
         
         tabPanel("Discussion", 
                  titlePanel("Discussion"),
-                 h3("This app is a work in progress"),
-                 p("My name is Trevor Cobb, and I'm interested in working to fix the broken US healthcare system. But any reasonable attempt a problem solving must begin with a thorough
-                   understanding of the challenges. This app explores barriers to care and longitudinal healthcare spending data in the US."),
-                 uiOutput("link"))
+                 h4("The Medical Expenditure Panel Survey (MEPS), the data source for this project, 
+                   provides harmonized microdata from the longitudinal survey of U.S. health care expenditures and utilization.
+                   "),
+                 p("Source: Lynn A. Blewett, Julia A. Rivera Drew, Risa Griffin and Kari C.W. Williams. IPUMS Health Surveys: Medical Expenditure Panel Survey, Version 1.1 [dataset]. Minneapolis, MN: IPUMS, 2019.
+                    https://doi.org/10.18128/D071.V1.1"),
+                 uiOutput("link"),
+                 br(),
+                 br(),
+                 br(),
+                 sidebarPanel(
+                     h3("About Me"),
+                     h4("Trevor Cobb, MDE Candidate at Harvard GSD & SEAS"),
+                     p("I'm interested in social determinants of health, and in working to fix the broken US healthcare system. 
+                        But any reasonable attempt at problem solving must begin with
+                        a thorough exploration of the challenges. 
+                       This is part of my attempt to build the skills necessary to understand")))
         
     ))
 
-# Define server logic required to draw a histogram
 
 server <- function(input, output) {
     
@@ -41,21 +72,10 @@ server <- function(input, output) {
         tags$a(href="https://github.com/t-cobb/healthcareaccess", "Here is the link to this repo")
     })
     
-    output$table1 <- render_gt({
-        tbl_fit_4
-    })
-    
-    output$median_plot <- renderPlot({
-        median_plot
-    })
-    
-    output$fit_4_posterior_farYes <- renderPlot ({
-        fit_4_posterior_farYes
-    })
-    
-    output$fit_4_posterior_whereYes <- renderPlot ({
-        fit_4_posterior_whereYes
-    })    
+    # output$table1 <- render_gt({
+    #     tbl_fit_4
+    # })
+    # 
 }
 
 # Run the application 
