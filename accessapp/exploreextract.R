@@ -27,8 +27,8 @@ library(shinythemes)
 
 # read in the IPUMS / MPES data 
 
-ddi <- read_ipums_ddi("raw_data/nhis_00001.xml")
-sleep_data <- read_ipums_micro(ddi)
+# ddi <- read_ipums_ddi("raw_data/nhis_00001.xml")
+# sleep_data <- read_ipums_micro(ddi)
 
 ddi <- read_ipums_ddi("raw_data/meps_00002.xml")
 costaccess_data <- read_ipums_micro(ddi)
@@ -161,6 +161,87 @@ access_clean <- costs_clean %>%
          noinsurance = case_when(noinsurance == 1 ~ "No",
                                  noinsurance == 2 ~ "Yes",
                                  TRUE ~ NA_character_))
+
+
+# question: how many individuals faced each of these barriers to care, and what's the trend over time?
+# For this I'll need to calculate how many "yes" per year in any given variable 
+# drop all the No's and NA's 
+
+access_trends <- access_clean %>%
+  select(-total, -self_pay, -direct_pay) %>% 
+  group_by(YEAR) %>% 
+  
+  add_tally(where == "Yes") %>%
+  rename(where_tally = "n") %>%
+  
+  add_tally(doc_moved == "Yes") %>%
+  rename(doc_moved_tally = "n") %>%
+  
+  add_tally(far == "Yes") %>%
+  rename(far_tally = "n") %>%
+  
+  add_tally(language == "Yes") %>%
+  rename(language_tally = "n") %>%
+  
+  add_tally(dislike_doc == "Yes") %>%
+  rename(dislike_doc_tally = "n") %>%
+  
+  add_tally(noneed_doc == "Yes") %>%
+  rename(noneed_doc_tally = "n") %>%
+  
+  add_tally(other == "Yes") %>%
+  rename(other_tally = "n") %>%
+  
+  add_tally(jobrelated == "Yes") %>%
+  rename(jobrelated_tally = "n") %>%
+  
+  add_tally(noinsurance == "Yes") %>%
+  rename(noinsurance_tally = "n") %>%
+  
+  select(-where, -doc_moved, -far, -language, 
+         -dislike_doc, -noneed_doc, 
+         -other, -jobrelated, -noinsurance) %>% 
+  
+  # only one row per year
+  
+  slice_head(n = 1) %>%
+  
+  # rename with original variable names 
+  
+  rename(where = where_tally,
+         doc_moved = doc_moved_tally,
+         far = far_tally, 
+         language = language_tally,
+         dislike_doc = dislike_doc_tally,
+         noneed_doc = noneed_doc_tally,
+         other = other_tally, 
+         jobrelated = jobrelated_tally, 
+         noinsurance = noinsurance_tally) %>%
+  pivot_longer(names_to = "barriers",
+               values_to = "count",
+               cols = -YEAR) %>%
+  filter(YEAR != 2018)
+
+write_rds(access_trends, file = "access_trends.rds")
+
+# remove 2018 because no data exists 
+ 
+# plot access_trends
+
+access_plot <- access_trends %>%
+  ggplot(aes(x = YEAR, 
+             y = count, 
+             color = barriers)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Barriers to Healthcare Access",
+       subtitle = "Number of people reporting a specific barrier",
+       x = NULL,
+       y = "People impacted",
+       color = "Barrier",
+       caption = "Source: IPUMS") +
+  theme_classic()
+
 
 # a few of the questions I'm curious about: 
 # how do barriers to care impact total costs and out of pocket healthcare expenditures? 

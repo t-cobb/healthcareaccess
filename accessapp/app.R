@@ -9,14 +9,25 @@ library(shiny)
 # tbl_fit_4 <- read_rds("accessapp/clean_data/tbl_fit_4.rds")
 # median_costs <- read_rds("accessapp/clean_data/median_costs.rds")
 
+access_trends <- read_rds(file = "clean_data/access_trends.rds")
+
 # Define UI for application 
 ui <- navbarPage(
     
     tabsetPanel(
         tabPanel("Healthcare Expenditures in the US",
                  titlePanel("Cost of Care"),
+                 mainPanel(
+                     selectInput(inputId = "barrier",
+                                 label = "Select a Barrier:",
+                                 choices = c(unique(access_trends$barriers)),
+                                 selected = "language",
+                                 multiple = TRUE),
+                     plotOutput("access_plot")),
+             
                  img(src = "median_plot.png", height = "75%", width = "70%",
-                     style = "display: block; margin-left: auto; margin-right: auto;")),
+                     style = "display: block; margin-left: auto; margin-right: auto;")
+                 ),
                  
         tabPanel("Model",
                  titlePanel(""),
@@ -71,6 +82,23 @@ server <- function(input, output) {
     output$link <- renderUI({
         tags$a(href="https://github.com/t-cobb/healthcareaccess", "Here is the link to this repo")
     })
+    
+    output$access_plot <- renderPlot(
+        access_trends %>%
+            filter(barriers %in% input$barrier) %>%
+            ggplot(aes(x = YEAR, 
+                       y = count, 
+                       color = barriers)) +
+            geom_point() +
+            geom_line() +
+            labs(title = "Barriers to Healthcare Access",
+                 subtitle = "Number of people reporting a specific barrier",
+                 x = NULL,
+                 y = "People impacted",
+                 color = "Barrier",
+                 caption = "Source: IPUMS") +
+            theme_classic()
+    )
     
     # output$table1 <- render_gt({
     #     tbl_fit_4
