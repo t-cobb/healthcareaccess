@@ -55,9 +55,27 @@ median_costs <- costs %>%
   select(YEAR,
          direct_pay,
          self_pay,
-         total) 
+         total) %>%
+  pivot_longer(names_to = "type",
+               values_to = "cost",
+               cols = -YEAR)
 
-#saveRDS(median_costs, "median_costs.rds")
+write_rds(median_costs, "median_costs.rds")
+
+median_app <- median_costs %>%
+  ggplot(aes(x = YEAR, 
+             y = cost, 
+             color = type)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Cost of Medical Care in the United States",
+       subtitle = "Healthcare costs continue to rise",
+       x = NULL,
+       y = "Median Cost",
+       color = "Type",
+       caption = "Source: IPUMS") +
+  theme_classic()
+
 
 # Plot the medians. We need to stack a few to get them to appear on one plot.
 

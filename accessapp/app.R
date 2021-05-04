@@ -10,24 +10,29 @@ library(shiny)
 # median_costs <- read_rds("accessapp/clean_data/median_costs.rds")
 
 access_trends <- read_rds(file = "clean_data/access_trends.rds")
+median_costs <- read_rds(file = "clean_data/median_costs.rds")
 
 # Define UI for application 
 ui <- navbarPage(
     
     tabsetPanel(
-        tabPanel("Healthcare Expenditures in the US",
-                 titlePanel("Cost of Care"),
+        tabPanel("Healthcare Access and Expenditures in the US",
+                 titlePanel(""),
                  mainPanel(
                      selectInput(inputId = "barrier",
-                                 label = "Select a Barrier:",
+                                 label = "Select a barrier to care to see it in the plot below:",
                                  choices = c(unique(access_trends$barriers)),
-                                 selected = "language",
+                                 selected = c("language", "far"),
                                  multiple = TRUE),
                      plotOutput("access_plot")),
-             
-                 img(src = "median_plot.png", height = "75%", width = "70%",
-                     style = "display: block; margin-left: auto; margin-right: auto;")
-                 ),
+                 br(),
+                 br(),
+                     selectInput(inputId = "type",
+                                 label = "Select a payment type to see it in the plot below:",
+                                 choices = c(unique(median_costs$type)),
+                                 selected = "self_pay",
+                                 multiple = TRUE),
+                     plotOutput("median_plot")),
                  
         tabPanel("Model",
                  titlePanel(""),
@@ -72,10 +77,9 @@ ui <- navbarPage(
                      p("I'm interested in social determinants of health, and in working to fix the broken US healthcare system. 
                         But any reasonable attempt at problem solving must begin with
                         a thorough exploration of the challenges. 
-                       This is part of my attempt to build the skills necessary to understand")))
-        
-    ))
-
+                       This is part of my attempt to build the skills necessary to understand"))
+                 
+                 )))
 
 server <- function(input, output) {
     
@@ -91,11 +95,29 @@ server <- function(input, output) {
                        color = barriers)) +
             geom_point() +
             geom_line() +
-            labs(title = "Barriers to Healthcare Access",
-                 subtitle = "Number of people reporting a specific barrier",
+            labs(title = "Specific Barriers to Healthcare Access",
+                 subtitle = "'No Insurance' and 'No Doctor Needed' most reported",
                  x = NULL,
                  y = "People impacted",
                  color = "Barrier",
+                 caption = "Source: IPUMS") +
+            theme_classic()
+        
+        )
+    
+    output$median_plot <- renderPlot(
+        median_costs %>%
+            filter(type %in% input$type) %>%
+            ggplot(aes(x = YEAR, 
+                       y = cost, 
+                       color = type)) +
+            geom_point() +
+            geom_line() +
+            labs(title = "Cost of Medical Care in the United States Per Person (Median)",
+                 subtitle = "Healthcare costs continue to rise",
+                 x = NULL,
+                 y = "$USD",
+                 color = "Type",
                  caption = "Source: IPUMS") +
             theme_classic()
     )
