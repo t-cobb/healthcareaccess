@@ -7,7 +7,7 @@ library(rstanarm)
 library(broom.mixed)
 library(gtsummary)
 library(tidybayes)
-
+library(ggdist)
 
 # this is the file I do most of my data manipulation, cleaning, and plotting to prep for my web app
 
@@ -370,14 +370,22 @@ saveRDS(tbl_fit_4, "tbl_fit_4.rds")
 
 # I'll attempt to use tidybayes to prep a newobs tibble for displaying fit_4 
 
-self_pay <- unique(y$self_pay)
-where <- c("Yes", "No")
-doc_moved <- c("Yes", "No")
-far <- c("Yes", "No")
-direct_pay <- unique(y$direct_pay) 
-YEAR <- unique(y$YEAR)
+# reference gender and ideology plot (ideology / income men and women class day)
+# use doc_moved as fill variable and focus on interaction 
+# total x axis
+# posterior for different levels of direct Moved relationship //
+# highlight plot at top of model page, analysis below
 
-newobs <- expand_grid(YEAR, self_pay, where, doc_moved, far, direct_pay) %>%
+# unique(y$self_pay)
+
+self_pay <- "above_ave"
+where <- "Yes"
+doc_moved <- c("Yes", "No")
+far <- "No"
+direct_pay <- unique(y$direct_pay) 
+# YEAR <- unique(y$YEAR)
+
+newobs <- expand_grid(self_pay, where, doc_moved, far, direct_pay) %>%
   as_tibble()
 
 pe <- posterior_epred(fit_4, 
@@ -386,27 +394,28 @@ pe <- posterior_epred(fit_4,
 
 z <- add_fitted_draws(newobs, fit_4) 
 
-u <- z %>% group_by(self_pay, where, doc_moved, far, direct_pay) %>%
-  summarize(avg = median(.value)) %>%
-  arrange(desc(avg)) 
+# u <- z %>% group_by(self_pay, where, doc_moved, far, direct_pay) %>%
+#   summarize(avg = median(.value)) %>%
+#   arrange(desc(avg)) 
 
 # should be no overlap between filter and ggplot()
 
-u %>% 
-  filter(self_pay == "above_ave", 
-         far == "No",
-      #  where == "Yes",
-        direct_pay == "above_ave") %>% 
+z %>% 
+  # filter(self_pay == "above_ave", 
+  #        far == "No",
+  #     #  where == "Yes",
+  #       direct_pay == "above_ave") %>% 
        
-  ggplot(aes(x = as.character(doc_moved), 
-             y = avg,
-             fill = where)) +
-  stat_slab(alpha = 0.5) +
-  labs(title = "Title",
-       subtitle = "Sub", 
-       x = "Year",
-       y = "$",
-       caption = "Source: IPUMS")
+  ggplot(aes(x = .value,
+             y = direct_pay,
+             fill = doc_moved)) +
+  stat_slab(alpha = 0.7) +
+  labs(title = "Direct Pay versus Doctor Moved or is Unavailable and Total Cost",
+       subtitle = "", 
+       x = "Total Cost of Care",
+       y = "Annual Direct Payment Amount",
+       caption = "Source: IPUMS") +
+  theme_light()
 
 # plots for fit_4 
 
