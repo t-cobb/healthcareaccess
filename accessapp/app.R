@@ -34,10 +34,18 @@ ui <- fluidPage(theme = shinytheme("superhero"),
                      plotOutput("access_plot")),
                  
                  sidebarPanel(
-                     h4("Variable Definitions"),
-                     p("This is where I'll write about the data source, and definition of variables"))
-                 
-                 ),
+                     h4("Why no usual source of care?"),
+                     p("Noinsurance: No health insurance"),
+                     p("Language: Speak a different language"),
+                     p("Where: Doesn't know where to go"),
+                     p("Far: Care too far away or inconvenient"),
+                     p("Doc_moved: Previous doctor moved or is unavailable"),
+                     p("Dislike_doc: Doesn't like doctors"),
+                     p("Noneed_doc: Doesn't need doctor"),
+                     p("Jobrelated: Reason related to job"),
+                     p("Other: Other reason given"))
+                     
+                     ),
         
         tabPanel("Cost",
                  h3("How has the cost of care changed over time?"),
@@ -80,25 +88,27 @@ ui <- fluidPage(theme = shinytheme("superhero"),
                      style = "display: block; margin-left: auto; margin-right: auto;")),
         
         
-        tabPanel("Discussion", 
-                 h3("About the Project"),
-                 p("The Medical Expenditure Panel Survey (MEPS), the data source for this project, 
-                   provides harmonized microdata from the longitudinal survey of U.S. health care expenditures and utilization.
+        tabPanel("About", 
+                 h3("Motivation"),
+                 p("Communities with difficulty accessing medical services have higher morbidity rates. Which barriers to care impact the most people? Do these same communities end up paying more for care? 
+                 What is the correlation between specific barriers and out-of-pocket expenditures or total health care costs? These were a few of the questions
+                 which motivated this investigation."),
+                 p("There is much work to be done to address the social determinants of health in the United States, and to 
+                   deisgn a system that enables equitable access to health care services. Although this analysis stops short of 
+                   suggesting a specific course of action, my hope is that the data surfaced here will encourage further interrogation
+                   into the relationship between financial incentives and barriers to care."),
+                 h4("About the Data"),
+                 p("The data for this project was sourced from the Medical Expenditure Panel Survey (MEPS), which 
+                   provides harmonized microdata from a longitudinal survey of U.S. health care expenditures and utilization.
                    "),
-                 p("Source: Lynn A. Blewett, Julia A. Rivera Drew, Risa Griffin and Kari C.W. Williams. IPUMS Health Surveys: Medical Expenditure Panel Survey, Version 1.1 [dataset]. Minneapolis, MN: IPUMS, 2019.
-                    https://doi.org/10.18128/D071.V1.1"),
+                 p("Source: Lynn A. Blewett, Julia A. Rivera Drew, Risa Griffin and Kari C.W. Williams. IPUMS Health Surveys: Medical Expenditure Panel Survey, Version 1.1 [dataset]. Minneapolis, MN: IPUMS, 2019."),
                  uiOutput("link"),
                  br(),
-                 br(),
-                 br(),
                  sidebarPanel(
-                     h3("About Me"),
-                     h4("Trevor Cobb, MDE Candidate at Harvard GSD & SEAS"),
-                     p("I'm interested in social determinants of health, and in working to fix the broken US healthcare system. 
-                        But any reasonable attempt at problem solving must begin with
-                        a thorough exploration of the challenges. 
-                       This is part of my attempt to build the skills necessary to understand"))
-                 
+                     h4("About"),
+                     p(strong("Trevor Cobb, Master of Design Engineering, Harvard")),
+                     p("I'm a product manager, design strategist and venture builder. I blend human-centered-design and qualitative insight with 
+                       data science to identify opportunities for impactful innovation."))
                  )))
 )
 
@@ -107,7 +117,7 @@ ui <- fluidPage(theme = shinytheme("superhero"),
 server <- function(input, output) {
     
     output$link <- renderUI({
-        tags$a(href="https://github.com/t-cobb/healthcareaccess", "Here is the link to this repo")
+        tags$a(href="https://github.com/t-cobb/healthcareaccess", "Find the data and source code for this project in my Guthub repo:")
     })
     
     output$access_plot <- renderPlot(
