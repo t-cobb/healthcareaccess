@@ -18,12 +18,11 @@ ui <- fluidPage(theme = shinytheme("superhero"),
     navbarPage("Healthcare Costs and Barriers to Care in the US",
     
     tabsetPanel(
-        tabPanel("Access & Expenditures",
-                 h2("Which barriers to care impact the most people?"),
+        tabPanel("Access",
+                 h3("Which barriers to care impact the most people?"),
                  p("Data From The Medical Expenditure Panel Survey (MEPS)", 
                    style = "font-size:18px;"),
                  
-                 br(),
                  br(),
             
                  mainPanel(
@@ -34,23 +33,29 @@ ui <- fluidPage(theme = shinytheme("superhero"),
                                  multiple = TRUE),
                      plotOutput("access_plot")),
                  
-                 # h2("How has the cost of care changed over time?"),
-                 # p("Mapping out-of-pocket expenses, direct payments 
-                 #   and total healthcare expenditures per person.",
-                 #   style = "font-size:18px;"),
+                 sidebarPanel(
+                     h4("Variable Definitions"),
+                     p("This is where I'll write about the data source, and definition of variables"))
+                 
+                 ),
+        
+        tabPanel("Cost",
+                 h3("How has the cost of care changed over time?"),
+                 p("Mapping out-of-pocket expenses, direct payments
+                   and total healthcare expenditures per person.",
+                   style = "font-size:18px;"),
                  
                  br(),
-                 br(),
                  
-                     selectInput(inputId = "type",
-                                 label = "Select a payment type to see it in the plot below:",
-                                 choices = c(unique(median_costs$type)),
-                                 selected = "self_pay",
-                                 multiple = TRUE),
-                     plotOutput("median_plot")),
-                 
+                 selectInput(inputId = "type",
+                             label = "Select a payment type to see it in the plot below:",
+                             choices = c(unique(median_costs$type)),
+                             selected = "self_pay",
+                             multiple = TRUE),
+                 plotOutput("median_plot")),
+        
         tabPanel("Model",
-                 titlePanel(""),
+                 h3("Examining the relationship between cost and access"),
                  p(strong("Regression Model Equation:")),
                  withMathJax('$$ (log)total_i = \\beta_0 + \\beta_1selfpay_i + 
                         \\beta_2where_i + \\beta_3docmoved_i + \\beta_4far_i +
@@ -76,8 +81,8 @@ ui <- fluidPage(theme = shinytheme("superhero"),
         
         
         tabPanel("Discussion", 
-                 titlePanel("Discussion"),
-                 h4("The Medical Expenditure Panel Survey (MEPS), the data source for this project, 
+                 h3("About the Project"),
+                 p("The Medical Expenditure Panel Survey (MEPS), the data source for this project, 
                    provides harmonized microdata from the longitudinal survey of U.S. health care expenditures and utilization.
                    "),
                  p("Source: Lynn A. Blewett, Julia A. Rivera Drew, Risa Griffin and Kari C.W. Williams. IPUMS Health Surveys: Medical Expenditure Panel Survey, Version 1.1 [dataset]. Minneapolis, MN: IPUMS, 2019.
@@ -96,6 +101,8 @@ ui <- fluidPage(theme = shinytheme("superhero"),
                  
                  )))
 )
+
+# define server side logic 
 
 server <- function(input, output) {
     
