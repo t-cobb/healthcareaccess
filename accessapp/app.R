@@ -6,7 +6,7 @@ library(ggthemes)
 
 
 # read in cleaned data 
-# full data manipulation and wrangling can be found in my repo: "exploreextract" r script
+# full data manipulation and wrangling can be found in my repo in the "exploreextract" r script
 
 access_trends <- read_rds(file = "clean_data/access_trends.rds")
 median_costs <- read_rds(file = "clean_data/median_costs.rds")
@@ -17,6 +17,8 @@ ui <- fluidPage(theme = shinytheme("superhero"),
     
     navbarPage("Healthcare Costs and Barriers to Care in the US",
     
+    # First tab starts here
+               
     tabsetPanel(
         tabPanel("Access",
                  h3("Which barriers to care impact the most people?"),
@@ -33,6 +35,8 @@ ui <- fluidPage(theme = shinytheme("superhero"),
                                  multiple = TRUE),
                      plotOutput("access_plot")),
                  
+    # sidebar that defines all the variables 
+    
                  sidebarPanel(
                      h4("Why no usual source of care?"),
                      p("Noinsurance: No health insurance"),
@@ -47,6 +51,8 @@ ui <- fluidPage(theme = shinytheme("superhero"),
                      
                      ),
         
+    # Second tab starts here 
+    
         tabPanel("Cost",
                  h3("How has the cost of care changed over time?"),
                  p("Mapping out-of-pocket expenses, direct payments
@@ -62,39 +68,54 @@ ui <- fluidPage(theme = shinytheme("superhero"),
                              multiple = TRUE),
                  plotOutput("median_plot")),
         
+    # Third tab starts here 
+    
         tabPanel("Model",
-                 h3("Examining the relationship between cost and access"),
-                 p(strong("Regression Model Equation:")),
+                 h3("What is the relationship between cost and specific access barriers?"),
+                 p("I merged cost and access datasets and designed a predictive model to investigate how different barriers to care
+                   impact total annual health care costs. The model presented here targets geographic barriers to care. 
+                   I discovered the most significant predictive correlation between the variables 'far' and 'where'. My results suggest that 
+                   individuals who cite being too far as the reason for not having a usual source of care will have a total cost of care
+                   that is 25% higher than average, on an annual basis. Those who do not know where to go for care will have 15% higher costs on average.
+                   "),
+                
+                 h4("Regression Model Equation:"),
+                
                  withMathJax('$$ (log)total_i = \\beta_0 + \\beta_1selfpay_i + 
                         \\beta_2where_i + \\beta_3docmoved_i + \\beta_4far_i +
                         \\beta_5directpay*docmoved_i + 
                            \\varepsilon_i $$'),
-                 br(),
-                 br(),
               #   gt_output("table1"),
-                  img(src = "tbl_fit_4.png", height = "60%", width = "60%",
-                  style = "display: block; margin-left: auto; margin-right: auto;"),
                 br(),
+              
+                  h4("Table for Predictive Regression Model"),
+                  img(src = "tbl_fit_4.png", height = "40%", width = "40%",
+                      style = "display: block; margin-left: auto; margin-right: auto;"),
+                 
+                 br(),
                  br(),
                  h4("Posteriors of Geographic Barriers to Care"),
                  br(),
                  br(),
-                 img(src = "fit_4_posterior_whereYes.png", height = "60%", width = "60%",
+                 img(src = "fit_4_posterior_whereYes.png", height = "40%", width = "40%",
                      style = "display: block; margin-left: auto; margin-right: auto;"),
                  br(),
                  br(),
                  br(),
-                 img(src = "fit_4_posterior_farYes.png", height = "60%", width = "60%",
-                     style = "display: block; margin-left: auto; margin-right: auto;")),
+                 img(src = "fit_4_posterior_farYes.png", height = "40%", width = "40%",
+                     style = "display: block; margin-left: auto; margin-right: auto;"),
+                 
+              ),
         
+    # fourth tab starts here
         
         tabPanel("About", 
                  h3("Motivation"),
-                 p("Communities with difficulty accessing medical services have higher morbidity rates. Which barriers to care impact the most people? Do these same communities end up paying more for care? 
-                 What is the correlation between specific barriers and out-of-pocket expenditures or total health care costs? These were a few of the questions
+                 p("Communities with difficulty accessing medical services have higher morbidity rates. Which barriers to care have the greatest impact? Do these same communities end up paying more for care? 
+                 What is the correlation between specific barriers, and out-of-pocket expenditures or total health care costs? These were a few of the questions
                  which motivated this investigation."),
-                 p("There is much work to be done to address the social determinants of health in the United States, and to 
-                   deisgn a system that enables equitable access to health care services. Although this analysis stops short of 
+                 p("Much work remains to address the social determinants of health in the United States, and to 
+                   design a system that enables equitable access to health care services. Although this analysis stops short of 
                    suggesting a specific course of action, my hope is that the data surfaced here will encourage further interrogation
                    into the relationship between financial incentives and barriers to care."),
                  h4("About the Data"),
@@ -105,7 +126,7 @@ ui <- fluidPage(theme = shinytheme("superhero"),
                  uiOutput("link"),
                  br(),
                  sidebarPanel(
-                     h4("About"),
+                     h4("About Me"),
                      p(strong("Trevor Cobb, Master of Design Engineering, Harvard")),
                      p("I'm a product manager, design strategist and venture builder. I blend human-centered-design and qualitative insight with 
                        data science to identify opportunities for impactful innovation."))
@@ -117,7 +138,7 @@ ui <- fluidPage(theme = shinytheme("superhero"),
 server <- function(input, output) {
     
     output$link <- renderUI({
-        tags$a(href="https://github.com/t-cobb/healthcareaccess", "Find the data and source code for this project in my Guthub repo:")
+        tags$a(href="https://github.com/t-cobb/healthcareaccess", "Find the data and source code for this project in my GutHub repo:")
     })
     
     output$access_plot <- renderPlot(
