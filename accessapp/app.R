@@ -2,22 +2,30 @@ library(tidyverse)
 library(primer.data)
 library(shinythemes)
 library(shiny)
+library(ggthemes)
 
 
-# source(file = "exploreextract.R")
-# fit_4 <- read_rds("accessapp/clean_data/fit_4.rds")
-# tbl_fit_4 <- read_rds("accessapp/clean_data/tbl_fit_4.rds")
-# median_costs <- read_rds("accessapp/clean_data/median_costs.rds")
+# read in cleaned data 
+# full data manipulation and wrangling can be found in my repo: "exploreextract" r script
 
 access_trends <- read_rds(file = "clean_data/access_trends.rds")
 median_costs <- read_rds(file = "clean_data/median_costs.rds")
 
 # Define UI for application 
-ui <- navbarPage(
+
+ui <- fluidPage(theme = shinytheme("superhero"),
+    
+    navbarPage("Healthcare Costs and Barriers to Care in the US",
     
     tabsetPanel(
-        tabPanel("Healthcare Access and Expenditures in the US",
-                 titlePanel(""),
+        tabPanel("Access & Expenditures",
+                 h2("Which barriers to care impact the most people?"),
+                 p("Data From The Medical Expenditure Panel Survey (MEPS)", 
+                   style = "font-size:18px;"),
+                 
+                 br(),
+                 br(),
+            
                  mainPanel(
                      selectInput(inputId = "barrier",
                                  label = "Select a barrier to care to see it in the plot below:",
@@ -25,8 +33,15 @@ ui <- navbarPage(
                                  selected = c("language", "far"),
                                  multiple = TRUE),
                      plotOutput("access_plot")),
+                 
+                 # h2("How has the cost of care changed over time?"),
+                 # p("Mapping out-of-pocket expenses, direct payments 
+                 #   and total healthcare expenditures per person.",
+                 #   style = "font-size:18px;"),
+                 
                  br(),
                  br(),
+                 
                      selectInput(inputId = "type",
                                  label = "Select a payment type to see it in the plot below:",
                                  choices = c(unique(median_costs$type)),
@@ -80,6 +95,7 @@ ui <- navbarPage(
                        This is part of my attempt to build the skills necessary to understand"))
                  
                  )))
+)
 
 server <- function(input, output) {
     
@@ -101,7 +117,7 @@ server <- function(input, output) {
                  y = "People impacted",
                  color = "Barrier",
                  caption = "Source: IPUMS") +
-            theme_classic()
+            theme_light()
         
         )
     
@@ -119,7 +135,7 @@ server <- function(input, output) {
                  y = "$USD",
                  color = "Type",
                  caption = "Source: IPUMS") +
-            theme_classic()
+            theme_light()
     )
     
     # output$table1 <- render_gt({
