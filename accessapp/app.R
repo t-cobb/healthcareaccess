@@ -55,9 +55,11 @@ ui <- fluidPage(theme = shinytheme("superhero"),
     
         tabPanel("Cost",
                  h3("How has the cost of care changed over time?"),
-                 p("Mapping out-of-pocket expenses, direct payments
-                   and total healthcare expenditures per person.",
-                   style = "font-size:18px;"),
+                 p("Following are the key variables examined in the plot below:"),
+                 p("Direct Pay captures the sum of direct payments for care provided during the year
+                    including out-of-pocket payments and payments by private insurance, Medicaid, Medicare, and other sources."),
+                 p("Total Pay is the sum of fully established charges for care received during the year, excluding those for prescribed medicines."),
+                 p("Self Pay captures the total annual out-of-pocket expenses not including insurance or medications."),
                  
                  br(),
                  
@@ -117,7 +119,7 @@ ui <- fluidPage(theme = shinytheme("superhero"),
                  p("Much work remains to address the social determinants of health in the United States, and to 
                    design a system that enables equitable access to health care services. Although this analysis stops short of 
                    suggesting a specific course of action, my hope is that the data surfaced here will encourage further interrogation
-                   into the relationship between financial incentives and barriers to care."),
+                   into the relationship between economic factors and barriers to care."),
                  h4("About the Data"),
                  p("The data for this project was sourced from the Medical Expenditure Panel Survey (MEPS), which 
                    provides harmonized microdata from a longitudinal survey of U.S. health care expenditures and utilization.

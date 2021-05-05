@@ -9,20 +9,12 @@ library(gtsummary)
 library(tidybayes)
 
 
+# this is the file I do most of my data manipulation, cleaning, and plotting to prep for my web app
+
+# ABOUT THE DATA
 # The Medical Expenditure Panel Survey (MEPS) 
 # provides harmonized microdata from the longitudinal survey of 
 # U.S. health care expenditures and utilization
-
-# explanation of cost variables:
-
-# P	EXPTOT	Annual total of direct health care payments 
-# EXPTOT captures the sum of direct payments for care provided during the year
-# including out-of-pocket payments and payments by private insurance, Medicaid, Medicare, and other sources
-
-# P	CHGTOT	Annual total of charges for health care
-# sum of fully established charges for care received during the year, 
-# excluding those for prescribed medicines
-# does not usually reflect actual payments made for services
 
 # read in the IPUMS / MPES data 
 
@@ -39,8 +31,7 @@ costs <- costaccess_data %>%
          self_pay = EXPSELFPAY,
          total = CHGTOT) 
 
-# find the median for each year
-# Choosing median over mean because I'm wary of outliers throwing off range
+# find the median for each year and create a new tibble with median_costs
 
 median_costs <- costs %>%
   group_by(YEAR) %>%
@@ -59,7 +50,15 @@ median_costs <- costs %>%
                values_to = "cost",
                cols = -YEAR)
 
+# pivot_longer is the key to be able to make this "plottable", 
+# so the values and names appear in separate columns
+
+# save the rds with this median_costs tibble so I can pull just the clean data into my app. 
+# Then move to the app level, into the folder "clean_data"
+
 write_rds(median_costs, "median_costs.rds")
+
+# I recreate this plot in the app, but here is the code for my median plot:
 
 median_app <- median_costs %>%
   ggplot(aes(x = YEAR, 
@@ -76,7 +75,8 @@ median_app <- median_costs %>%
   theme_classic()
 
 
-# Plot the medians. We need to stack a few to get them to appear on one plot.
+# This is a different version of the same plot. 
+# If I didn't use an interactive plot, I could display all three together with this code:
 
 median_plot <- median_costs %>%
   ggplot(aes(x = YEAR,
@@ -101,7 +101,9 @@ median_plot <- median_costs %>%
        caption = "Source: IPUMS") +
   theme_classic()
 
+################################################################################
 # a note on the data on access / barriers to healthcare. 
+
 # all of the variables below are reasons for "no usual source of care"
 
 # Variable explanations: 
@@ -116,6 +118,7 @@ median_plot <- median_costs %>%
 # P	NOUSLYNOINS	Why no usual source of care: No health insurance
 
 # To explore this data in more depth, 
+
 # I'll isolate the access tibble, and rename each variable
 
 costs_clean <- costs %>%
@@ -180,8 +183,8 @@ access_clean <- costs_clean %>%
                                  TRUE ~ NA_character_))
 
 
-# question: how many individuals faced each of these barriers to care, and what's the trend over time?
-# For this I'll need to calculate how many "yes" per year in any given variable 
+# question I'll consider: how many individuals faced each of these barriers to care, and what's the trend over time?
+# For this I'll need to calculate how many "yes" per year in any given variable. There's likely a more efficient way to do this 
 # drop all the No's and NA's 
 
 access_trends <- access_clean %>%
@@ -223,7 +226,7 @@ access_trends <- access_clean %>%
   
   slice_head(n = 1) %>%
   
-  # rename with original variable names 
+  # rename with original variable names for ease of interpretation
   
   rename(where = where_tally,
          doc_moved = doc_moved_tally,
@@ -243,7 +246,7 @@ write_rds(access_trends, file = "access_trends.rds")
 
 # remove 2018 because no data exists 
  
-# plot access_trends
+# plot access_trends. I create this live in my app, but this is the code for a static version, for future reference
 
 access_plot <- access_trends %>%
   ggplot(aes(x = YEAR, 
@@ -278,7 +281,9 @@ y <- access_clean %>%
                               self_pay < mean(self_pay) ~ "below_ave"))
 
 # for the first model, I'll explore only cost variables.
-# note that I filter out 0 in the total variable, as above, and create a sample of my full data set 
+# note that I filter out 0 in the total variable, as above, and create a sample of my full data set
+
+# this next section includes all of the models I experimented with en route to my final selection (fit_4)
 
 costsmall <- costs %>% 
   filter(total > 0) %>%
@@ -297,13 +302,6 @@ fit_2 <- stan_glm(y,
                    refresh = 0,
                    family = gaussian,
                    seed = 254)
-
-# this is the line to save the output of my fit, which I can then move  to clean_data folder in my app
-
-saveRDS(fit_2, file = "fit_2.rds")
-
-# within my app, I call readRDS("(foldername)/fit_2.RDS") assign to an object
-# don't put rstanarm in the app or the app won't publish
 
 fit_3 <- stan_glm(x,
                  formula = log(total) ~ language + noinsurance + self_pay + self_pay*jobrelated,
@@ -337,7 +335,8 @@ fit_7 <- stan_glm(y,
                   refresh = 0,
                   seed = 288)
 
-# compare models: 
+# compare models using loo_compare. But first, each fit needs a loo object
+# Not exactly sure what the k_threshold is but R reccommended it, perhaps due to machine lag
 
 loo1 <- loo(fit_1, k_threshold = 0.7)
 loo2 <- loo(fit_2, k_threshold = 0.7)
@@ -350,8 +349,8 @@ loo7 <- loo(fit_7, k_threshold = 0.7)
 compare <- loo_compare(loo2, loo4,loo7)
 
 # it seems fit_4 and fit_7 are the best of the batch, and that 4 > 7
-
 # fit_4 is the preferred model according to my loo_compare. I'll save it and move it to clean_data
+
 saveRDS(fit_4, file = "fit_4.rds")
 
 # let's look at a fit in table form 
@@ -366,9 +365,10 @@ tbl_fit_4 <- tbl_regression(fit_4,
   cols_label(estimate = md("**Parameter**"))
 
 # save this table and move into clean_data / my shiny app 
+
 saveRDS(tbl_fit_4, "tbl_fit_4.rds")
 
-# tidybayes prep / newobs tibble for fit_4 
+# I'll attempt to use tidybayes to prep a newobs tibble for displaying fit_4 
 
 self_pay <- unique(y$self_pay)
 where <- c("Yes", "No")
@@ -395,7 +395,7 @@ u <- z %>% group_by(self_pay, where, doc_moved, far, direct_pay) %>%
 u %>% 
   filter(self_pay == "above_ave", 
          far == "No",
-       #  where == "Yes",
+      #  where == "Yes",
         direct_pay == "above_ave") %>% 
        
   ggplot(aes(x = as.character(doc_moved), 
@@ -407,7 +407,6 @@ u %>%
        x = "Year",
        y = "$",
        caption = "Source: IPUMS")
-
 
 # plots for fit_4 
 
@@ -426,18 +425,6 @@ farYes <- fit_4 %>%
   scale_y_continuous(labels = scales::percent_format(1)) +
   theme_classic()
 
-intercept <- fit_4 %>% 
-  as_tibble() %>% 
-  ggplot(aes(`(Intercept)`)) + 
-  geom_histogram(aes(y = after_stat(count/sum(count))),
-                 bins = 100) +
-  labs(title = "Posterior Distribution of Intercept",
-       y = "Probability",
-       x = "Coefficient of Intercept",
-       caption = "Source: IPUMS") + 
-  scale_y_continuous(labels = scales::percent_format(1)) +
-  theme_classic()
-
 whereYes <- fit_4 %>% 
   as_tibble() %>% 
   ggplot(aes(whereYes)) + 
@@ -450,6 +437,33 @@ whereYes <- fit_4 %>%
        caption = "Source: IPUMS") + 
   scale_y_continuous(labels = scales::percent_format(1)) +
   theme_classic()
+
+intercept <- fit_4 %>% 
+  as_tibble() %>% 
+  ggplot(aes(`(Intercept)`)) + 
+  geom_histogram(aes(y = after_stat(count/sum(count))),
+                 bins = 100) +
+  labs(title = "Posterior Distribution of Intercept",
+       y = "Probability",
+       x = "Coefficient of Intercept",
+       caption = "Source: IPUMS") + 
+  scale_y_continuous(labels = scales::percent_format(1)) +
+  theme_classic()
+
+
+# ABOUT THE DATA
+
+# explanation of cost variables:
+
+# P	EXPTOT	Annual total of direct health care payments 
+# EXPTOT captures the sum of direct payments for care provided during the year
+# including out-of-pocket payments and payments by private insurance, Medicaid, Medicare, and other sources
+
+# P	CHGTOT	Annual total of charges for health care
+# sum of fully established charges for care received during the year, 
+# excluding those for prescribed medicines
+# does not usually reflect actual payments made for services
+
 
 ###################################################################
 
