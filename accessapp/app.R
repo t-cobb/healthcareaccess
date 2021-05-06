@@ -74,13 +74,22 @@ ui <- fluidPage(theme = shinytheme("superhero"),
     
         tabPanel("Model",
                  h3("What is the relationship between cost and specific access barriers?"),
-                 p("I merged cost and access datasets and designed a predictive model to investigate how different barriers to care
-                   impact total annual health care costs. The model presented here targets geographic barriers to care. 
-                   I discovered the most significant predictive correlation between the variables 'far' and 'where'. My results suggest that 
+                 p("I built a predictive regression model to investigate how different barriers to care
+                   impact total annual health care costs. The model presented below targets geographic barriers to care. 
+                   The most significant predictive correlation found exists between the variables 'far' and 'where'. These results suggest that 
                    individuals who cite being too far as the reason for not having a usual source of care will have a total cost of care
-                   that is 25% higher than average, on an annual basis. Those who do not know where to go for care will have 15% higher costs on average.
-                   "),
+                   that is 25% higher than average, on an annual basis. Those who do not know where to go for care will have 15% higher costs on average."),
+                 
+                 br(),
+                 
+                 p("This posterior distribution demonstrates the relative impact on total cost of care for individuals whose
+                   doctors move away or are unavailable."),
                 
+                 img(src = "posteriors.png", height = "40%", width = "40%",
+                     style = "display: block; margin-left: auto; margin-right: auto;"),
+                 
+                 br(),
+                 
                  h4("Regression Model Equation:"),
                 
                  withMathJax('$$ (log)total_i = \\beta_0 + \\beta_1selfpay_i + 
@@ -91,6 +100,7 @@ ui <- fluidPage(theme = shinytheme("superhero"),
                 br(),
               
                   h4("Table for Predictive Regression Model"),
+
                   img(src = "tbl_fit_4.png", height = "40%", width = "40%",
                       style = "display: block; margin-left: auto; margin-right: auto;"),
                  
@@ -98,11 +108,15 @@ ui <- fluidPage(theme = shinytheme("superhero"),
                  br(),
                  h4("Posteriors of Geographic Barriers to Care"),
                  br(),
+                    p("This posterior distribution illustrates that for individuals who do not know where to receive care,
+                      their total healthcare costs will be around 15% higher than average."),
                  br(),
                  img(src = "fit_4_posterior_whereYes.png", height = "40%", width = "40%",
                      style = "display: block; margin-left: auto; margin-right: auto;"),
                  br(),
                  br(),
+              p("This posterior distribution illustrates that for individuals who may live in rural areas or are far from healthcare services,
+                      their total annual cost of care will be around 25% higher than the national average."),
                  br(),
                  img(src = "fit_4_posterior_farYes.png", height = "40%", width = "40%",
                      style = "display: block; margin-left: auto; margin-right: auto;"),
@@ -120,6 +134,7 @@ ui <- fluidPage(theme = shinytheme("superhero"),
                    design a system that enables equitable access to health care services. Although this analysis stops short of 
                    suggesting a specific course of action, my hope is that the data surfaced here will encourage further interrogation
                    into the relationship between economic factors and barriers to care."),
+                 br(),
                  h4("About the Data"),
                  p("The data for this project was sourced from the Medical Expenditure Panel Survey (MEPS), which 
                    provides harmonized microdata from a longitudinal survey of U.S. health care expenditures and utilization.
@@ -140,7 +155,7 @@ ui <- fluidPage(theme = shinytheme("superhero"),
 server <- function(input, output) {
     
     output$link <- renderUI({
-        tags$a(href="https://github.com/t-cobb/healthcareaccess", "Find the data and source code for this project in my GutHub repo:")
+        tags$a(href="https://github.com/t-cobb/healthcareaccess", "Find the data and source code for this project in my GutHub repo.")
     })
     
     output$access_plot <- renderPlot(

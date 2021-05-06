@@ -280,6 +280,22 @@ y <- access_clean %>%
          self_pay = case_when(self_pay >= mean(self_pay) ~ "above_ave",
                               self_pay < mean(self_pay) ~ "below_ave"))
 
+test <- y %>%
+  pivot_wider(names_from = YEAR,
+              values_from = c("YEAR",
+                              "where",
+                              "doc_moved",
+                              "far",
+                              "language",
+                              "dislike_doc",
+                              "noneed_doc", 
+                              "other",
+                              "jobrelated",
+                              "noinsurance",
+                              "total", 
+                              "self_pay",
+                              "direct_pay"))
+
 # for the first model, I'll explore only cost variables.
 # note that I filter out 0 in the total variable, as above, and create a sample of my full data set
 
@@ -375,6 +391,7 @@ saveRDS(tbl_fit_4, "tbl_fit_4.rds")
 # total x axis
 # posterior for different levels of direct Moved relationship //
 # highlight plot at top of model page, analysis below
+# cowplot package -- plotgrid()
 
 # unique(y$self_pay)
 
@@ -410,9 +427,9 @@ z %>%
              y = direct_pay,
              fill = doc_moved)) +
   stat_slab(alpha = 0.7) +
-  labs(title = "Direct Pay versus Doctor Moved or is Unavailable and Total Cost",
+  labs(title = "Posterior for Impact of Doctor Moving on Costs",
        subtitle = "", 
-       x = "Total Cost of Care",
+       x = "Total Cost of Care (% increase)",
        y = "Annual Direct Payment Amount",
        caption = "Source: IPUMS") +
   theme_light()
